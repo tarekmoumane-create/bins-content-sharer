@@ -91,20 +91,20 @@ console.log("\nNo key: the handles channel is the list, exactly as before");
 delete process.env.SIDESHIFT_API_KEY;
 const r0 = await loadRoster(SOURCE);
 check("source is the channel", r0.source === "channel");
-check("every link in the channel is watched", same(keys(r0), ["instagram:annasfinds", "instagram:ghostpage", "tiktok:anna.old", "tiktok:annasfinds", "tiktok:ghost.tiktok", "tiktok:kaylaleft", "youtube:annashorts", "youtube:kaylatube"]), keys(r0).join(", "));
+check("every TikTok and Instagram link in the channel is watched, YouTube is not", same(keys(r0), ["instagram:annasfinds", "instagram:ghostpage", "tiktok:anna.old", "tiktok:annasfinds", "tiktok:ghost.tiktok", "tiktok:kaylaleft"]), keys(r0).join(", "));
 check("SideShift was not called", sideshift.calls.length === 0);
 
 console.log("\nWith a key (and clippers explicitly included): SideShift's active contracts decide");
 process.env.SIDESHIFT_API_KEY = "sspk_test_fake";
 process.env.SIDESHIFT_CLIPPERS = "include";
 const r1 = await loadRoster(SOURCE);
-const expected = ["instagram:annasfinds", "instagram:ghostpage", "instagram:nova.ig", "tiktok:annasfinds", "tiktok:ghost.tiktok", "tiktok:novathrifts", "youtube:annashorts"];
+const expected = ["instagram:annasfinds", "instagram:ghostpage", "instagram:nova.ig", "tiktok:annasfinds", "tiktok:ghost.tiktok", "tiktok:novathrifts"];
 check("source is sideshift", r1.source === "sideshift" && !r1.error, r1.error);
 check("active creators' accounts are watched, new creator included", same(keys(r1), expected), keys(r1).join(", "));
-check("creator who left is gone (TikTok and her YouTube link)", !keys(r1).some((k) => k.includes("kayla")));
+check("creator who left is gone", !keys(r1).some((k) => k.includes("kayla")));
 check("an account that is not on the contract is not watched", !keys(r1).includes("tiktok:anna.old"));
 check("other campaigns and other platforms are ignored", !keys(r1).some((k) => k.includes("othercampaign") || k.includes("6159")));
-check("YouTube link kept for someone still on the team", keys(r1).includes("youtube:annashorts"));
+check("no YouTube at all, even for someone still on the team", !keys(r1).some((k) => k.startsWith("youtube")));
 check("the key is sent, both pages are read", sideshift.keys.has("sspk_test_fake") && sideshift.calls.some((c) => c.includes("cursor=page2")));
 check("asks only for active contracts in the campaign", sideshift.calls.some((c) => c.startsWith("/contracts?status=active&programId=prog1")));
 check("a team member's channel link fills in a platform SideShift has nothing for", keys(r1).includes("tiktok:ghost.tiktok"));
@@ -134,12 +134,19 @@ console.log("\nOut of the box (no SIDESHIFT_CLIPPERS): clippers' accounts are le
 delete process.env.SIDESHIFT_CLIPPERS;
 sideshift.calls.length = 0;
 const r6 = await loadRoster(SOURCE);
-check("clipper's accounts are gone, everyone else stays", same(keys(r6), ["instagram:annasfinds", "instagram:ghostpage", "tiktok:annasfinds", "tiktok:ghost.tiktok", "youtube:annashorts"]), keys(r6).join(", "));
+check("clipper's accounts are gone, everyone else stays", same(keys(r6), ["instagram:annasfinds", "instagram:ghostpage", "tiktok:annasfinds", "tiktok:ghost.tiktok"]), keys(r6).join(", "));
 const detailReads = () => sideshift.calls.filter((c) => /^\/contracts\/\w+/.test(c)).length;
 check("each active contract in the campaign was read once", detailReads() === 3, `reads=${detailReads()}`);
 await loadRoster(SOURCE);
 check("the answer is remembered, so the next run reads none", detailReads() === 3, `reads=${detailReads()}`);
 process.env.SIDESHIFT_CLIPPERS = "include";
+
+console.log("\nWATCH_PLATFORMS can switch YouTube back on, for team members only");
+process.env.WATCH_PLATFORMS = "tiktok,instagram,youtube";
+const r7 = await loadRoster(SOURCE);
+check("YouTube link of someone on the team is watched", keys(r7).includes("youtube:annashorts"));
+check("YouTube link of someone who left is not", !keys(r7).includes("youtube:kaylatube"));
+delete process.env.WATCH_PLATFORMS;
 
 console.log("\nSideShift down and nothing saved yet: fall back to the channel");
 await fetch(redis.url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(["DEL", "sideshift:roster"]) });

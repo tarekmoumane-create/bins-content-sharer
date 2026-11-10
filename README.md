@@ -25,9 +25,11 @@ watches exactly the accounts on those contracts.
 
 - A creator who leaves stops being watched at the next run. A new creator is
   watched from the next run, whether or not they posted links.
-- YouTube isn't on SideShift, so YouTube links still come from the channel, but
-  only when the person who posted them also posted a TikTok or Instagram account
-  that SideShift lists as active.
+- YouTube is off. Bins no longer does YouTube, so only TikTok and Instagram
+  accounts are watched, whatever links are in the channel. `WATCH_PLATFORMS`
+  (for example `tiktok,instagram,youtube`) is the only way to widen that; with
+  YouTube back on, a YouTube link counts only when the person who posted it also
+  posted a TikTok or Instagram account that SideShift lists as active.
 - An account SideShift marks inactive is skipped. If that leaves a team member
   with nothing on TikTok or Instagram, the link they posted in the channel for
   that platform is used instead.
